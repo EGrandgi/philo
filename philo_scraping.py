@@ -9,8 +9,8 @@ import os
 import csv
 from functions import create_soup
 
-dir_out = os.path.join(os.getcwd(), 'out')
-os.makedirs(dir_out, exist_ok=True)
+dir_tr = os.path.join(os.getcwd(), 'tr')
+os.makedirs(dir_tr, exist_ok=True)
 
 
 # ## http://www.maphilosophie.fr/textes.php
@@ -51,6 +51,6 @@ for k in df.index:
 
 # Save
 website = 'maphilosophie'
-df.to_csv(os.path.join(dir_out, f'{website}.csv'),
+df.to_csv(os.path.join(dir_tr, f'{website}.csv'),
           sep='§', index=False, encoding='utf-8-sig')
 
