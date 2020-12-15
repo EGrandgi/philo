@@ -12,7 +12,7 @@ from functions import create_soup, flat_list
 import unidecode
 import re
 
-dir_tr = os.path.join(os.getcwd(), 'tr')
+dir_tr = os.path.join(os.getcwd(), 'data', 'tr')
 os.makedirs(dir_tr, exist_ok=True)
 
 
@@ -90,7 +90,6 @@ df = df.drop(inds, axis=0).reset_index(drop=True)
 website = 'maphilosophie'
 df.to_csv(os.path.join(dir_tr, f'{website}.csv'), sep='§', index=False,
           encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
-
 
 
 # ## http://www.ac-grenoble.fr/PhiloSophie/old2/bases/search.php
@@ -179,9 +178,9 @@ df2.theme = [re.sub("[^A-Za-z -']+", '', x) for x in df2.theme]
 df2.theme = [x.replace(' - ', '|').replace(' ', '|').replace('/', '|').replace('&', '').replace('||', '|').replace("l'", '').replace('|de|', '|').replace(
     '|la|', '|').replace('|le|', '|').replace('|du|', '|').replace('\r', '').replace('\n', '').replace('(s', '').replace(')', '').replace("l'", '') for x in df2.theme]
 df2.theme = [[z for z in x.split('|') if z not in ['la', 'le', 'un', 'une', 'les', 'des', 'du', 'de', 'et', 'en', 'quoi',
-                                                  'sans', '?', '!', '', 'a', '(2)', 'est', 'que', 'ce', 'dans', 'nos', 'comme', 'il', 'ii', 'aux', 'par']] for x in df2.theme]
+                                                   'sans', '?', '!', '', 'a', '(2)', 'est', 'que', 'ce', 'dans', 'nos', 'comme', 'il', 'ii', 'aux', 'par']] for x in df2.theme]
 df2.theme = [[z.replace('"', '')
-             for z in x if "'" not in z and '-' not in z] for x in df2.theme]
+              for z in x if "'" not in z and '-' not in z] for x in df2.theme]
 df2.theme = ['|'.join(x) for x in df2.theme]
 
 
@@ -189,6 +188,4 @@ df2.theme = ['|'.join(x) for x in df2.theme]
 website = 'acgrenoble'
 df2.to_csv(os.path.join(dir_tr, f'{website}.csv'), sep='§', index=False,
            encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
-
-
 

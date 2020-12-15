@@ -11,9 +11,9 @@ from functions import basic_cleaner, flat_list
 import unidecode
 import re
 
-dir_tr = os.path.join(os.getcwd(), 'tr')
+dir_tr = os.path.join(os.getcwd(), 'data', 'tr')
 os.makedirs(dir_tr, exist_ok=True)
-# dir_out = os.path.join(os.getcwd(), 'out')
+# dir_out = os.path.join(os.getcwd(), 'data', 'out')
 # os.makedirs(dir_out, exist_ok=True)
 
 pd.set_option('display.max_columns', None)
@@ -84,12 +84,10 @@ df_all = pd.merge(df_all, df_corresp_auth, left_on='author',
                   right_on='author', how='outer')
 
 
-
-
 # TO BE CONTINUED
 
 
 # Save
-df.to_csv(os.path.join(dir_tr, f'clean_stats.csv'), sep='§', index=False,
-          encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
+df_all.to_csv(os.path.join(dir_tr, f'clean_stats.csv'), sep='§', index=False,
+              encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
 
