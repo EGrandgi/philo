@@ -17,7 +17,7 @@ os.makedirs(dir_tr, exist_ok=True)
 
 
 url = 'http://www.maphilosophie.fr/textes.php'
-soup = create_soup(url)
+soup = create_soup(url, 'cp1252')
 
 # Get texts links
 links = []
@@ -25,32 +25,31 @@ for td in soup.find_all('td', class_='cellules'):
     if td.find('a') is not None:
         link = td.find('a')['href']
         if link.split('?$cle=')[1] != '':
-            link = 'http://www.maphilosophie.fr/' + link.replace(' ', '%20').replace("'", "%27").replace(
-                'è', '%E8').replace('é', '%E9')
+            link = 'http://www.maphilosophie.fr/' + link.replace(' ', '%20').replace("'", "%27").replace('è', '%E8').replace('é', '%E9').replace('û', '%FB').replace('ê', '%EA').replace('î', '%EE').replace(
+                'à', '%E0').replace('É', '%C9').replace('ô', '%F4').replace('ç', '%E7').replace('Ê', '%CA').replace('â', '%E2').replace('ï', '%EF').replace('\x92', '%92').replace('\x9c', '%9C')
             links.append(link)
 
 
 # Store content in a dataframe
-df = pd.DataFrame(columns=['link', 'author', 'title',
-                           'subtitle', 'year', 'content'])
+df = pd.DataFrame(columns=['source', 'link', 'author',
+                           'title', 'subtitle', 'year', 'content'])
 df.link = links
+df.source = 'maphilosophie.fr'
 
 for k in df.index:
-    print(k)
     link = df.loc[k, 'link']
-    soup = create_soup(link)
+    soup = create_soup(link, 'cp1252')
     df.loc[k, 'author'] = soup.find('div', class_='col-lg-12').find('h1').text
     df.loc[k, 'subtitle'] = soup.find(
         'div', class_='col-lg-12').find('h2').text
     info = soup.find('div', class_='ref').text.split(',')
-    df.loc[k, 'title'] = info[1]
-    df.loc[k, 'year'] = info[len(info) - 1]
-    df.loc[k, 'content'] = soup.find(
-        'div', class_='corps').text.replace('\x92', "'")
-
+    df.loc[k, 'title'] = info[1] if len(info) > 0 else ''
+    df.loc[k, 'year'] = info[len(info) - 1] if len(info) > 0 else ''
+    df.loc[k, 'content'] = soup.find('div', class_='corps').text.replace(
+        '\x92', "'").replace('\r', '').replace('\n', '')
 
 # Save
 website = 'maphilosophie'
-df.to_csv(os.path.join(dir_tr, f'{website}.csv'),
-          sep='§', index=False, encoding='utf-8-sig')
+df.to_csv(os.path.join(dir_tr, f'{website}.csv'), sep='§', index=False,
+          encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
 
