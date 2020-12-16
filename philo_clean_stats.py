@@ -41,7 +41,8 @@ df_all['id'] = range(df_all.shape[0])
 df_all.id = [str(x).zfill(6) for x in df_all.id]
 
 # clean content
-df_all['content_c'] = [basic_cleaner(s) for s in df_all.content]
+df_all['content_c'] = [basic_cleaner(s, False) for s in df_all.content]
+df_all['content_clower'] = [basic_cleaner(s, True) for s in df_all.content]
 
 # stats
 df_all['nchar'] = [len(s) for s in df_all.content_c]
@@ -52,6 +53,10 @@ df_all['nsent'] = [s if s > 0 else 1 for s in df_all.nsent]
 df_all['nint'] = [s.count('?') for s in df_all.content_c]
 df_all['nexcl'] = [s.count('!') for s in df_all.content_c]
 df_all['ncomm'] = [s.count(',') + s.count(';') for s in df_all.content_c]
+df_all['nupp'] = [len(re.findall('([A-Z])', s)) - (s.count('.') - s.count('...')
+                                                   * 2 + s.count('!') + s.count('?')) for s in df_all.content_c]
+df_all['nupp'] = [x if x > 0 else 0 for x in df_all['nupp']]
+df_all['nquot'] = [s.count('"') for s in df_all.content]
 
 # convert to int
 for var_ in ['nchar', 'nwords', 'nsent', 'nint', 'nexcl', 'ncomm']:

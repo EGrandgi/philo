@@ -29,9 +29,13 @@ def create_soup(url, enc):
     return soup
 
 
-def basic_cleaner(s):
+def basic_cleaner(s, lower):
 
-    return re.sub("[^A-Za-z.!?,;' ]+", '', unidecode.unidecode(s.replace('\x92', ' ').replace('\x9c', 'oe').lower())).replace("'", ' ').replace('  ', ' ')
+    s = re.sub("[^A-Za-z.!?,;' ]+", '', unidecode.unidecode(s.replace('(...)',
+                                                                      '').replace('[...]', '').replace('\x92', ' ').replace('\x9c', 'oe'))).replace("'", ' ').replace('  ', ' ')
+    s = s if not lower else s.lower()
+
+    return s
 
 
 def flat_list(l: list) -> list:
