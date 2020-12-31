@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+""" Fonctions
+- divers : traitement de listes
+- scraping : récupération du code source d'une page web
+- traitement automatique du langage : nettoyage de texte, tokenisation, lemmatisation, stopwords, modèle LDA, topic modelling
+
+"""
+
 
 import spacy
 from nltk.corpus import stopwords
@@ -21,7 +28,7 @@ from gensim.models import CoherenceModel
 
 
 # =============================================================================
-#                                 Utils
+#                                  divers
 # =============================================================================
 
 
@@ -31,7 +38,7 @@ def flat_list(l: list) -> list:
 
 
 # =============================================================================
-#                                 Scraping
+#                                  scraping
 # =============================================================================
 
 
@@ -49,7 +56,7 @@ def create_soup(url: str, enc: str):
 
 
 # =============================================================================
-#                                 NLP
+#                      traitement automatique du langage
 # =============================================================================
 
 
@@ -116,7 +123,7 @@ def build_lda_model(nb, corpus, id2word, data_lemma):
 
 
 # conservation du meilleur modèle pour la suite
-def lda_traitements(nb, corpus, id2word):
+def lda_traitements(nb, corpus, id2word, data_lemma):
     m, d, p, c, t = lda_model, doc_lda, perplexity_lda, coherence_lda, model_topics = build_lda_model(
         nb, corpus, id2word, data_lemma)
     return m, d, p, c, t
@@ -125,12 +132,12 @@ def lda_traitements(nb, corpus, id2word):
 def format_topics_sentences(ldamodel, corpus, data):
     sent_topics_df = pd.DataFrame()
 
-    # Dans chaque document, trouver le topic dominant
+    # dans chaque document, trouver le thème dominant
     for i, row in enumerate(ldamodel[corpus]):
         row = sorted(row[0], key=lambda x: (x[1]), reverse=True)
-        # Trouver le topic dominant, la contribution du doc au modèle et les keywords pour chaque doc
+        # trouver le thème dominant, la contribution du texte au modèle et les mots-clés pour chaque doc
         for j, (topic_num, prop_topic) in enumerate(row):
-            if j == 0:  # si topic dominant
+            if j == 0:  # si thème dominant
                 wp = ldamodel.show_topic(topic_num)
                 topic_keywords = ", ".join([word for word, prop in wp])
                 sent_topics_df = sent_topics_df.append(pd.Series(

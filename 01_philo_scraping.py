@@ -1,6 +1,14 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+""" Récupération de textes de philosophie
+Scraping de 2 sites web :
+- http://www.maphilosophie.fr/textes.php
+- http://www.ac-grenoble.fr/PhiloSophie/old2/bases/search.php (moteur de recherche par auteur)
+Sauvegarde csv : texte, auteur, titre, thème, année, lien, source
+
+"""
+
 
 from bs4 import BeautifulSoup
 import requests
@@ -16,13 +24,15 @@ dir_tr = os.path.join(os.getcwd(), 'data', 'tr')
 os.makedirs(dir_tr, exist_ok=True)
 
 
-# ## http://www.maphilosophie.fr/textes.php
+# =============================================================================
+#                               site maphilosophie
+# =============================================================================
 
 
 url = 'http://www.maphilosophie.fr/textes.php'
-soup = create_soup(url, 'cp1252')
+soup = create_soup(url, 'cp1252')  # code source
 
-# Get texts links
+# scraping du lien principal pour récupérer les liens des textes + correction
 links = []
 for td in soup.find_all('td', class_='cellules'):
     if td.find('a') is not None:
@@ -33,7 +43,7 @@ for td in soup.find_all('td', class_='cellules'):
             links.append(link)
 
 
-# Store content in a dataframe
+# scraping de chaque lien - stockage dans un dataframe
 df = pd.DataFrame(columns=['source', 'link', 'author',
                            'title', 'theme', 'year', 'content'])
 df.link = links
@@ -41,7 +51,9 @@ df.source = 'maphilosophie.fr'
 
 for k in df.index:
     link = df.loc[k, 'link']
-    soup = create_soup(link, 'cp1252')
+    soup = create_soup(link, 'cp1252')  # code source
+
+    # auteur (2 formats)
     author = soup.find('div', class_='col-lg-12').find('h1').text
     author = author[:len(author) - 1] if author[len(author) -
                                                 1:len(author)] == ' ' else author
@@ -50,26 +62,30 @@ for k in df.index:
     author_short = author_short[:len(author_short) - 1] if author_short[len(
         author_short) - 1:len(author_short)] == ' ' else author_short
     df.loc[k, 'author_short'] = author_short
+
+    # thème et titre
     df.loc[k, 'theme'] = soup.find(
         'div', class_='col-lg-12').find('h2').text
     info = soup.find('div', class_='ref').text.split(',')
     df.loc[k, 'title'] = info[1] if len(info) > 0 else ''
 
+    # année
     year = info[len(info) - 1] if len(info) > 0 else ''
     year = re.findall('[1-3][0-9]{3}', year)
     year = ['0'] if year == [] else year
     year = min([int(x) for x in year])
     df.loc[k, 'year'] = year
 
+    # texte
     df.loc[k, 'content'] = soup.find('div', class_='corps').text.replace(
         '\x92', "'").replace('\r', '').replace('\n', '')
 
 
-# year
+# correction année
 df.year = [x if x != 0 else '' for x in df.year]
 
 
-# theme
+# uniformisation thèmes
 df.theme = [unidecode.unidecode(
     x.replace('\x92', ' ').lower()) for x in df.theme]
 df.theme = [re.sub("[^A-Za-z -']+", '', x) for x in df.theme]
@@ -82,29 +98,39 @@ df.theme = [[z.replace('"', '')
 df.theme = ['|'.join(x) for x in df.theme]
 
 
-# drop
+# suppression de 2 articles lemonde
 inds = [i for i, x in zip(df.index, df.author_short) if 'monde' in x.lower()]
 df = df.drop(inds, axis=0).reset_index(drop=True)
 
-# Save
+
+# sauvegarde csv
 website = 'maphilosophie'
 df.to_csv(os.path.join(dir_tr, f'{website}.csv'), sep='§', index=False,
           encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
 
 
-# ## http://www.ac-grenoble.fr/PhiloSophie/old2/bases/search.php
+# =============================================================================
+#                         site Académie Grenoble Philo
+# =============================================================================
 
 
-# Get list of authors from maphilosophie
+# lien : http://www.ac-grenoble.fr/PhiloSophie/old2/bases/search.php
+# moteur de recherche par nom d'auteur
+
+
+# Liste d'auteurs trouvés sur maphilosophie
 authors_list = np.unique(df.author_short)
 df = df.drop(['author_short'], axis=1)
 authors_list = [unidecode.unidecode(x.lower()).replace(
     ' ', '+').replace("'", '%27').replace('-', '+') for x in authors_list if x != '']
 authors_list.sort()
+
+# génération d'une liste de liens, résultats des recherches par auteur
 links = [
     f'http://www.ac-grenoble.fr/PhiloSophie/old2/bases/search.php?auteur={a}&texte=&reference=&theme=' for a in authors_list]
 
-# Prepare dataframe
+
+# scraping de chaque lien - stockage dans des listes puis dans un dataframe
 df2 = pd.DataFrame(columns=['source', 'link', 'author',
                             'title', 'theme', 'year', 'content'])
 
@@ -120,7 +146,7 @@ for link in links:
 
     soup = create_soup(link, 'cp1252')
 
-    # get content
+    # auteur, texte, référence, thème, année
     author = [span.text for span in soup.find_all(
         'span', class_='sstitremarron')]
     content = [span.find('div', {'style': 'text-align: justify;'}).text.replace(
@@ -133,7 +159,7 @@ for link in links:
         'td', {'align': 'right'})]
     years = [re.findall('[1-3][0-9]{3}', s) for s in reference]
 
-    # append to list
+    # ajout à chaque liste
     auth_vect.append(author)
     cont_vect.append(content)
     ref_vect.append(reference)
@@ -142,7 +168,7 @@ for link in links:
     link_vect.append([link] * len(themes))
 
 
-# flatten
+# format des listes
 auth_vect = flat_list(auth_vect)
 cont_vect = flat_list(cont_vect)
 ref_vect = flat_list(ref_vect)
@@ -150,7 +176,7 @@ th_vect = flat_list(th_vect)
 year_vect = flat_list(year_vect)
 link_vect = flat_list(link_vect)
 
-# year
+# correction année
 year_vect = [['0'] if x == [] else x for x in year_vect]
 year_vect = [min([int(z) for z in x]) for x in year_vect]
 year_vect = [x if x != 0 else '' for x in year_vect]
@@ -163,6 +189,7 @@ print(f'year_vect: {len(year_vect)}')
 print(f'link_vect: {len(link_vect)}')
 
 
+# remplissage du dataframe
 df2['link'] = link_vect
 df2['author'] = auth_vect
 df2['title'] = ref_vect
@@ -171,7 +198,7 @@ df2['content'] = cont_vect
 df2['year'] = year_vect
 df2['source'] = 'ac-grenoble.fr'
 
-# theme
+# uniformisation thèmes
 df2.theme = [unidecode.unidecode(
     x.replace('\x92', ' ').lower()) for x in df2.theme]
 df2.theme = [re.sub("[^A-Za-z -']+", '', x) for x in df2.theme]
@@ -184,7 +211,7 @@ df2.theme = [[z.replace('"', '')
 df2.theme = ['|'.join(x) for x in df2.theme]
 
 
-# Save
+# sauvegarde
 website = 'acgrenoble'
 df2.to_csv(os.path.join(dir_tr, f'{website}.csv'), sep='§', index=False,
            encoding='utf-8-sig', escapechar='\\', quoting=csv.QUOTE_NONE)
