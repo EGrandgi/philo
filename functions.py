@@ -20,6 +20,8 @@ import unidecode
 from gensim.utils import simple_preprocess
 import gensim
 import nltk
+from sklearn import neighbors
+import numpy as np
 nltk.download('stopwords')
 stop_words = stopwords.words('french')
 nlp = spacy.load('fr_core_news_md')
@@ -60,13 +62,48 @@ def create_soup(url: str, enc: str):
 # =============================================================================
 
 
-def basic_cleaner(s: str, lower: bool) -> str:
+def basic_cleaner(s: str, lower: bool, punct: bool) -> str:
+    
+    for el in ["n'", "l'", "qu'", "t'", "s'", "d'", "j'", "m'", "c'",
+               "N'", "L'", "Qu'", "T'", "S'", "D'", "J'", "M'", "C'",
+               '(...)', '[...]', '\x92', 'est-ce', 'Est-ce']:
+        s = s.replace(el, '')
 
-    s = re.sub("[^A-Za-z.!?,;' ]+", '', unidecode.unidecode(s.replace('(...)',
-                                                                      '').replace('[...]', '').replace('\x92', ' ').replace('\x9c', 'oe'))).replace("'", ' ').replace('  ', ' ')
+    s = s.replace('\x9c', 'oe').replace(' - ', ' ').replace('\x92', ' ')
+    s = unidecode.unidecode(s)
+    s = re.sub("[^A-Za-z0-9.!?,;' ]+", '',
+               s) if punct else re.sub("[^A-Za-z0-9 ]+", '', s)
+    s = s.replace("'", ' ').replace('  ', ' ')
+    s = ' '.join(s.split())
     s = s if not lower else s.lower()
 
     return s
+
+
+def embed(tokens: list, nlp: spacy.lang, remove_stops: bool, lim_len: int):
+
+    vectors = [x.vector for x in [nlp.vocab[token] for token in tokens] if len(x.text) > lim_len and x.has_vector] if not remove_stops else [
+        x.vector for x in [nlp.vocab[token] for token in tokens] if len(x.text) > lim_len and x.has_vector and not x.is_stop]
+    vectors = np.array(vectors)
+
+    centroid = vectors.mean(axis=0) if len(
+        vectors) > 0 else np.zeros(nlp.meta['vectors']['width'])
+
+    return centroid
+
+
+def predict_theme(tokens: list, theme_vectors: np.array, themes_list: list,
+                  n_neighbors: int, nlp: spacy.lang,
+                  remove_stops: bool, lim_len: int):
+
+    centroid = embed(tokens, nlp, remove_stops, lim_len)
+
+    neigh = neighbors.NearestNeighbors(n_neighbors=n_neighbors)
+    neigh.fit(theme_vectors)
+    closest_theme = neigh.kneighbors([centroid], return_distance=False)
+    theme = themes_list[int(closest_theme)]
+
+    return theme
 
 
 def tokenize(sentences):

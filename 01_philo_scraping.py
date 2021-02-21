@@ -16,7 +16,7 @@ import pandas as pd
 import numpy as np
 import os
 import csv
-from functions import create_soup, flat_list
+from functions import create_soup, flat_list, basic_cleaner
 import unidecode
 import re
 
@@ -85,13 +85,11 @@ for k in df.index:
 df.year = [x if x != 0 else '' for x in df.year]
 
 
-# uniformisation thèmes
-df.theme = [unidecode.unidecode(
-    x.replace('\x92', ' ').lower()) for x in df.theme]
-df.theme = [re.sub("[^A-Za-z -']+", '', x) for x in df.theme]
+# thème
+df.theme = [basic_cleaner(x, True, False) for x in df.theme]
 df.theme = [x.replace(' - ', '|').replace(' ', '|').replace('/', '|').replace('&', '').replace('||', '|').replace("l'", '').replace('|de|', '|').replace(
     '|la|', '|').replace('|le|', '|').replace('|du|', '|').replace('\r', '').replace('\n', '').replace('(s', '').replace(')', '').replace("l'", '') for x in df.theme]
-df.theme = [[z for z in x.split('|') if z not in ['la', 'le', 'un', 'une', 'les', 'des', 'du', 'de', 'et', 'en', 'quoi',
+df.theme = [[z for z in x.split('|') if z not in ['la', 'le', 'un', 'une', 'les', 'des', 'du', 'de', 'et', 'en', 'quoi', 'au', 'pourquoi',
                                                   'sans', '?', '!', '', 'a', '(2)', 'est', 'que', 'ce', 'dans', 'nos', 'comme', 'il', 'ii', 'aux', 'par']] for x in df.theme]
 df.theme = [[z.replace('"', '')
              for z in x if "'" not in z and '-' not in z] for x in df.theme]
@@ -198,16 +196,14 @@ df2['content'] = cont_vect
 df2['year'] = year_vect
 df2['source'] = 'ac-grenoble.fr'
 
-# uniformisation thèmes
-df2.theme = [unidecode.unidecode(
-    x.replace('\x92', ' ').lower()) for x in df2.theme]
-df2.theme = [re.sub("[^A-Za-z -']+", '', x) for x in df2.theme]
+# thème
+df.theme = [basic_cleaner(x, True, False) for x in df.theme]
 df2.theme = [x.replace(' - ', '|').replace(' ', '|').replace('/', '|').replace('&', '').replace('||', '|').replace("l'", '').replace('|de|', '|').replace(
     '|la|', '|').replace('|le|', '|').replace('|du|', '|').replace('\r', '').replace('\n', '').replace('(s', '').replace(')', '').replace("l'", '') for x in df2.theme]
-df2.theme = [[z for z in x.split('|') if z not in ['la', 'le', 'un', 'une', 'les', 'des', 'du', 'de', 'et', 'en', 'quoi',
-                                                   'sans', '?', '!', '', 'a', '(2)', 'est', 'que', 'ce', 'dans', 'nos', 'comme', 'il', 'ii', 'aux', 'par']] for x in df2.theme]
+df2.theme = [[z for z in x.split('|') if z not in ['la', 'le', 'un', 'une', 'les', 'des', 'du', 'de', 'et', 'en', 'quoi', 'au', 'pourquoi',
+                                                  'sans', '?', '!', '', 'a', '(2)', 'est', 'que', 'ce', 'dans', 'nos', 'comme', 'il', 'ii', 'aux', 'par']] for x in df2.theme]
 df2.theme = [[z.replace('"', '')
-              for z in x if "'" not in z and '-' not in z] for x in df2.theme]
+             for z in x if "'" not in z and '-' not in z] for x in df2.theme]
 df2.theme = ['|'.join(x) for x in df2.theme]
 
 

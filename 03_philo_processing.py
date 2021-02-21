@@ -38,6 +38,19 @@ pd.set_option('display.max_rows', None)
 
 
 # =============================================================================
+#                               word embeddings
+# =============================================================================
+
+themes_list = [theme.split('|') for theme in df_all.theme]
+theme_vectors = np.array([embed(theme, nlp, True, 0) for theme in themes_list])
+data = df_all.content_clower
+predicted_themes = [predict_theme(
+    doc.split(' '), theme_vectors, themes_list, 1, nlp, True, 0) for doc in data]
+predicted_themes = ['|'.join(x) for x in predicted_themes]
+df_all['predicted_theme'] = predicted_themes
+
+
+# =============================================================================
 #                               topic modelling
 # =============================================================================
 
