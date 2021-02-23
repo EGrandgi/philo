@@ -1,31 +1,27 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-""" Fonctions
-- divers : traitement de listes
-- scraping : récupération du code source d'une page web
-- traitement automatique du langage : nettoyage de texte, tokenisation, lemmatisation, stopwords, modèle LDA, topic modelling
+""" Functions
+- utils: data processing
+- scraping : extracting data from websites
+- text mining / NLP: text cleaning, tokenisation, lemmatisation, stopwords, LDA model, topic modelling
 
 """
 
 
 import spacy
-from nltk.corpus import stopwords
 from bs4 import BeautifulSoup
 import requests
 import pandas as pd
-import csv
 import re
 import unidecode
 from gensim.utils import simple_preprocess
 import gensim
-import nltk
 from sklearn import neighbors
 import numpy as np
-nltk.download('stopwords')
-stop_words = stopwords.words('french')
-nlp = spacy.load('fr_core_news_md')
 from gensim.models import CoherenceModel
+# word embeddings
+nlp = spacy.load('fr_core_news_md')  # python -m spacy download fr_core_news_md
 
 
 
@@ -58,7 +54,7 @@ def create_soup(url: str, enc: str):
 
 
 # =============================================================================
-#                      traitement automatique du langage
+#                              text mining / NLP
 # =============================================================================
 
 
@@ -66,7 +62,7 @@ def basic_cleaner(s: str, lower: bool, punct: bool) -> str:
     
     for el in ["n'", "l'", "qu'", "t'", "s'", "d'", "j'", "m'", "c'",
                "N'", "L'", "Qu'", "T'", "S'", "D'", "J'", "M'", "C'",
-               '(...)', '[...]', '\x92', 'est-ce', 'Est-ce']:
+               '(...)', '[...]', '\x92', 'est-ce', 'Est-ce', 'comment', 'Comment']:
         s = s.replace(el, '')
 
     s = s.replace('\x9c', 'oe').replace(' - ', ' ').replace('\x92', ' ')
@@ -137,7 +133,7 @@ def clean_lemmatize(data: list, bigram_mod, stop_words: list):
     return data_tokens_bigrams, data_lemmas_bigrams
 
 
-def build_lda_model(nb, corpus, id2word, data_lemma):
+def build_lda_model(nb: int, corpus: list, id2word: gensim.corpora.dictionary.Dictionary, data_lemma: list) -> (gensim.models.ldamodel.LdaModel, gensim.interfaces.TransformedCorpus, np.float64, np.float64, list):
 
     lda_model = gensim.models.ldamodel.LdaModel(corpus=corpus,
                                                 id2word=id2word,
@@ -160,13 +156,16 @@ def build_lda_model(nb, corpus, id2word, data_lemma):
 
 
 # conservation du meilleur modèle pour la suite
-def lda_traitements(nb, corpus, id2word, data_lemma):
-    m, d, p, c, t = lda_model, doc_lda, perplexity_lda, coherence_lda, model_topics = build_lda_model(
+def lda_traitements(nb: int, corpus: list, id2word: gensim.corpora.dictionary.Dictionary, data_lemma: list) -> (gensim.models.ldamodel.LdaModel, gensim.interfaces.TransformedCorpus, np.float64, np.float64, list):
+
+    lda_model, doc_lda, perplexity_lda, coherence_lda, model_topics = build_lda_model(
         nb, corpus, id2word, data_lemma)
-    return m, d, p, c, t
+
+    return lda_model, doc_lda, perplexity_lda, coherence_lda, model_topics
 
 
-def format_topics_sentences(ldamodel, corpus, data):
+def format_topics_sentences(ldamodel: gensim.models.ldamodel.LdaModel, corpus: list, data) -> pd.core.frame.DataFrame:
+
     sent_topics_df = pd.DataFrame()
 
     # dans chaque document, trouver le thème dominant
@@ -186,10 +185,13 @@ def format_topics_sentences(ldamodel, corpus, data):
 
     contents = pd.Series(data)
     sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
-    return(sent_topics_df)
+
+    return sent_topics_df
 
 
-def topics_df(lda_model, corpus, data):  # mise en forme des résultats dans un df
+# mise en forme des résultats dans un df
+def topics_df(lda_model: gensim.models.ldamodel.LdaModel, corpus: list, data: list) -> pd.core.frame.DataFrame:
+
     df_topic_sents_keywords = format_topics_sentences(
         lda_model, corpus, data)
     df_dominant_topic = df_topic_sents_keywords.reset_index()
@@ -197,3 +199,98 @@ def topics_df(lda_model, corpus, data):  # mise en forme des résultats dans un 
         'Document_Index', 'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'Text']
 
     return df_dominant_topic
+
+
+def most_common(c: collections.Counter, type_: str, nb: int) -> pd.core.frame.DataFrame:
+    if type_ == 'words':
+        df = pd.DataFrame(columns=['words', 'nb_occur'])
+
+        for word, nb_occur in c.most_common(nb):
+            L = df.shape[0]
+            df.loc[L+1] = [word, nb_occur]
+
+    elif type_ == 'bigrams':
+        df = pd.DataFrame(columns=['bigrams', 'nb_occur'])
+
+        for word, nb_occur in c.most_common(nb):
+            if '_' in word:
+                L = df.shape[0]
+                df.loc[L+1] = [word, nb_occur]
+
+    return df
+
+
+def plot_most_common(df: pd.core.frame.DataFrame, type_: str):
+    df.plot(x=type_, y='nb_occur', kind='bar', figsize=(14, 9))
+
+
+def wordcloud(df: pd.core.frame.DataFrame, type_: str):
+    dict_most_common = {}
+    for k in range(1, len(df)):
+        dict_most_common[df.loc[k][type_]] = int(df.loc[k]['nb_occur'])
+
+    most_common_cloud = WordCloud(background_color='white',
+                                  width=1600,
+                                  height=900).generate_from_frequencies(dict_most_common)
+    plt.figure(figsize=(14, 9), dpi=80)
+    plt.imshow(most_common_cloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+    
+    
+def sentiment(df: pd.core.frame.DataFrame, var_: str) -> pd.core.frame.DataFrame:
+
+    list_content = df[var_].tolist()
+
+    polarity = []
+    subjectivity = []
+    polarity_class = [0] * len(list_content)
+    subjectivity_class = [0] * len(list_content)
+
+    for i in range(len(list_content)):
+        if list_content[i] == 'empty':
+            polarity.append(0)
+            subjectivity.append(0)
+
+        else:
+            content = list_content[i]
+            blob = TextBlob(content, pos_tagger=PatternTagger(),
+                            analyzer=PatternAnalyzer())
+            polarity.append(blob.sentiment[0])
+            subjectivity.append(blob.sentiment[1])
+
+    df['polarity'] = polarity
+    df['subjectivity'] = subjectivity
+
+    for k in range(len(df)):
+        p = df.loc[k]['polarity']
+
+        if p < - 0.05:
+            polarity_class[k] = 'negative'
+
+        elif p > 0.125:
+            polarity_class[k] = 'positive'
+
+        else:
+            polarity_class[k] = 'neutral'
+
+        s = df.loc[k]['subjectivity']
+
+        if s < 0.2:
+            subjectivity_class[k] = 'objective'
+
+        elif s > 0.5:
+            subjectivity_class[k] = 'subjective'
+
+        else:
+            subjectivity_class[k] = 'neutral'
+
+    df['polarity_class'] = polarity_class
+    df['subjectivity_class'] = subjectivity_class
+
+    df['polarity_subjectivity'] = [f'{x}_{y}' for x, y in zip(
+        df.polarity_class, df.subjectivity_class)]
+
+    return(df)
+    
+    
